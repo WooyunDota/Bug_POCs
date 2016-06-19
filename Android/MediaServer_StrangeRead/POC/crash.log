@@ -1,0 +1,45 @@
+F/libc    ( 5348): Fatal signal 11 (SIGSEGV), code 2, fault addr 0xb3f02000 in t
+id 5369 (Binder_1)
+I/DEBUG   (  353): *** *** *** *** *** *** *** *** *** *** *** *** *** *** *** *
+**
+I/DEBUG   (  353): Build fingerprint: 'google/shamu/shamu:5.1.1/LMY47Z/1860966:u
+ser/release-keys'
+I/DEBUG   (  353): Revision: '33696'
+W/NativeCrashListener(  839): Couldn't find ProcessRecord for pid 5348
+I/DEBUG   (  353): ABI: 'arm'
+I/DEBUG   (  353): pid: 5348, tid: 5369, name: Binder_1  >>> /system/bin/mediase
+rver <<<
+E/DEBUG   (  353): AM write failure (32 / Broken pipe)
+I/DEBUG   (  353): signal 11 (SIGSEGV), code 2 (SEGV_ACCERR), fault addr 0xb3f02
+000
+I/DEBUG   (  353):     r0 b4caa250  r1 b3f01ff0  r2 000002d0  r3 00000008
+I/DEBUG   (  353):     r4 00002558  r5 b3f01ca4  r6 b3effda8  r7 00001a8c
+I/DEBUG   (  353):     r8 b3effda8  r9 00000000  sl 000003f5  fp b3effda4
+I/DEBUG   (  353):     ip 00000000  sp b3effd20  lr b6f6281d  pc b6edd42a  cpsr
+200e0030
+I/DEBUG   (  353):
+I/DEBUG   (  353): backtrace:
+I/DEBUG   (  353):     #00 pc 0001342a  /system/lib/libc.so (__memcpy_base+77)
+I/DEBUG   (  353):     #01 pc 00022819  /system/lib/libbinder.so (android::Parce
+l::write(void const*, unsigned int)+20)
+I/DEBUG   (  353):     #02 pc 00051021  /system/lib/libmedia.so (android::BnAudi
+oFlinger::onTransact(unsigned int, android::Parcel const&, android::Parcel*, uns
+igned int)+2984)
+I/DEBUG   (  353):     #03 pc 0001a6cd  /system/lib/libbinder.so (android::BBind
+er::transact(unsigned int, android::Parcel const&, android::Parcel*, unsigned in
+t)+60)
+I/DEBUG   (  353):     #04 pc 0001f77b  /system/lib/libbinder.so (android::IPCTh
+readState::executeCommand(int)+582)
+I/DEBUG   (  353):     #05 pc 0001f89f  /system/lib/libbinder.so (android::IPCTh
+readState::getAndExecuteCommand()+38)
+I/DEBUG   (  353):     #06 pc 0001f8e1  /system/lib/libbinder.so (android::IPCTh
+readState::joinThreadPool(bool)+48)
+I/DEBUG   (  353):     #07 pc 00023a5b  /system/lib/libbinder.so
+I/DEBUG   (  353):     #08 pc 000104d5  /system/lib/libutils.so (android::Thread
+::_threadLoop(void*)+112)
+I/DEBUG   (  353):     #09 pc 00010045  /system/lib/libutils.so
+I/DEBUG   (  353):     #10 pc 00016baf  /system/lib/libc.so (__pthread_start(voi
+d*)+30)
+I/DEBUG   (  353):     #11 pc 00014af3  /system/lib/libc.so (__start_thread+6)
+I/DEBUG   (  353):
+I/DEBUG   (  353): Tombstone written to: /data/tombstones/tombstone_07

@@ -1,0 +1,198 @@
+IOS & OSX Heap overflow vulnerability in IOHIDFamily of newest version
+
+1, Bug description
+The bug can be triggered from IOHIDLibUserClient::_postElementValues. The source code can be found in http://www.opensource.apple.com/source/IOHIDFamily/IOHIDFamily-701.20.10/
+When IOHIDLibUserClient::_postElementValues is called by User Space, it will finally reach IOHIDDevice::postElementValues.
+
+
+IOReturn IOHIDDevice::postElementValues(IOHIDElementCookie * cookies, UInt32 cookieCount)
+{
+    IOBufferMemoryDescriptor	*report = NULL;
+    IOHIDElementPrivate 		*element = NULL;
+    IOHIDElementPrivate 		*cookieElement = NULL;
+    UInt8			*reportData = NULL;
+    UInt32			maxReportLength = 0;
+    UInt32			reportLength = 0;
+    IOHIDReportType		reportType;
+    UInt8			reportID = 0;
+    UInt32 			index;
+    IOReturn			ret = kIOReturnError;
+
+    // Return an error if no cookies are being set
+    if (cookieCount == 0)
+        return ret;
+
+    // Get the max report size
+    maxReportLength = max(_maxOutputReportSize, _maxFeatureReportSize);                      <---- Get the maxReportLength from max(_maxOutputReportSize, _maxFeatureReportSize), but not consider the _maxInputReportSize
+
+    // Allocate a buffer mem descriptor with the maxReportLength.
+    // This way, we only have to allocate one mem buffer.
+    report = IOBufferMemoryDescriptor::withCapacity(maxReportLength, kIODirectionNone);      <---- Allocate a buffer with maxReportLength
+
+    if ( report == NULL )
+        return kIOReturnNoMemory;
+
+    WORKLOOP_LOCK;
+
+    // Set the transaction state on the specified cookies
+    SetCookiesTransactionState(cookieElement, cookies,
+            cookieCount, kIOHIDTransactionStatePending, index, 0);
+
+    // Obtain the buffer
+    reportData = (UInt8 *)report->getBytesNoCopy();                                           <---- Get the raw buffer from IOBufferMemoryDescriptor
+
+    // Iterate though all the elements in the
+    // transaction.  Generate reports if needed.
+    for (index = 0; index < cookieCount; index ++) {
+
+        cookieElement = GetElement(cookies[index]);                                           <---- Get the cookie element from cookie which can be controlled from user space
+
+        if ( cookieElement == NULL )
+            continue;
+
+        // Continue on to the next element if
+        // we've already processed this one
+        if ( cookieElement->getTransactionState()
+                != kIOHIDTransactionStatePending )
+            continue;
+
+        if ( !cookieElement->getReportType(&reportType) )
+            continue;
+
+        reportID = cookieElement->getReportID();
+
+        // Start at the head element and iterate through
+        element = GetHeadElement(GetReportHandlerSlot(reportID), reportType);               <---- Get the element based on the cookied element, the element may has InputReport whose size may bigger than max(_maxOutputReportSize, _maxFeatureReportSize)
+
+        while ( element ) {
+
+            element->createReport(reportID, reportData, &reportLength, &element);           <---- create report based on the element found by cookie. And fill reportData. (Heap overflow in this function, but may not crash)
+ 
+            // If the reportLength was set, then this is
+            // the head element for this report
+            if ( reportLength ) {
+                report->setLength(reportLength);                                            <---- will crash here because of assert in setLength, if the test machine use kernel.development as kernel image
+                reportLength = 0;
+            }
+
+        }
+
+        
+        
+In IOHIDElementPrivate::createReport : 
+
+bool IOHIDElementPrivate::createReport( UInt8           reportID,
+                                 void *		 reportData,  // this report should be alloced outisde this method.
+                                 UInt32 *        reportLength,
+                                 IOHIDElementPrivate ** next )
+{
+    bool handled = false;
+
+    if (next)
+        *next = _nextReportHandler;
+
+    do {
+        // Ignore report that does not match our report ID.
+    
+        if ( _reportID != reportID )
+            break;
+
+        //------------------------------------------------
+        // Changed this portion of the method.
+        // The report is now allocated outside of the 
+        // method
+         
+        if ( _reportSize )
+        {
+            *reportLength = _reportSize / 8;                    <---- reportLength here may bigger than its original value.
+
+            if ( reportData == 0 )
+            {
+                if (next) *next = 0;
+                break;
+            }
+
+            bzero( reportData, *reportLength );
+        } 
+        
+        //------------------------------------------------
+        
+
+        // Set next pointer to the next report handler in the chain.
+        // If this is an array or duplicate, set the next to the 
+        // appropriate handler.
+        if (next)
+        {            
+            if (IsArrayElement(this))
+            {
+                if (!IsArrayReportHandler(this))
+                {
+                    *next = _arrayReportHandler;
+                    break;
+                }
+                
+                // RY: Only bother creating an array report is this element
+                // is idle.
+                if (_transactionState == kIOHIDTransactionStateIdle)
+                    return createArrayReport(reportID, reportData, reportLength);
+            }            
+            else if (IsDuplicateElement(this))
+            {
+                if (!IsDuplicateReportHandler(this))
+                {
+                    *next = _duplicateReportHandler;
+                    break;
+                }
+                
+                // RY: Only bother creating a report if the duplicate report
+                // elements are idle.                
+                if (_transactionState == kIOHIDTransactionStateIdle)
+                    return createDuplicateReport(reportID, reportData, reportLength);
+            }
+        }
+
+        // If this element has not been set, an out of bounds
+        // value must be set.  This will cause the device
+        // to ignore the report for this element.
+        if ( _transactionState == kIOHIDTransactionStateIdle )
+        {
+                setOutOfBoundsValue();
+        }
+
+        // Set the element value to the report.
+        if ( reportData )
+        {
+            writeReportBits( _elementValue->value,   	/* source buffer      */         <---- copy _elementValue->value to reportData, but the length may bigger than reportData buffer length, overflow
+                           (UInt8 *) reportData,  	/* destination buffer */
+                           (_reportBits * _reportCount),/* bits to copy       */
+                           _reportStartBit);       	/* dst start bit      */                           
+
+            handled = true;
+            
+            // Clear the transaction state
+            _transactionState = kIOHIDTransactionStateIdle;
+        }
+        
+    }
+    while ( false );
+
+    return handled;
+}
+
+
+
+
+2, Other Details of this bug
+On OS X, you can trigger this bug directly using IOHIDDevice loaded by system. In my macbook pro, there are 5 IOHIDDevice already loaded by system.
+You can use 
+    ioreg -lxf | grep MaxInputReportSize
+To check the input report size and find the loaded IOHIDDevice, and their MaxInputReportSize/MaxOutputReportSize/MaxFeatureReportSize. 
+After you find the loaded IOHIDDevice, you can find the elements of the IOHIDDevice, their report type is input or output, and the cookie.
+In my macbook pro, the 350 cookie relates to a element with input report. So I pass 350 to IOHIDLibUserClient::_postElementValues, it will cause a crash in setLength.
+
+When you using exists IOHIDDevice, you can't control the MaxInputReportSize/MaxOutputReportSize/MaxFeatureReportSize.
+But if you use IOHIDResourceDeviceUserClient::_createDevice, you can create your own IOHIDDevice which is IOHIDUserDevice, and you can control everything of this device.
+IOHIDResourceDeviceUserClient::_createDevice needs root privilege on OSX. But on IOS, it can be called with normal privilege, so most JB of iOS used IOHIDFamily bug.
+
+
+The POC is in attachment.

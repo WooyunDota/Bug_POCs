@@ -1,0 +1,12 @@
+(lldb) bt
+* thread #2: tid = 0x292d, 0xffffff7f90e2077d AppleIntelBDWGraphics`IGAccelSurface::submitCopyForward(IOAccelEvent*, unsigned int, IOAccelResource2*, IOAccelResource2*, IOAccelBounds const*, unsigned int) + 39, name = '0xffffff802c59f000', queue = '0x0', stop reason = signal SIGSTOP
+  * frame #0: 0xffffff7f90e2077d AppleIntelBDWGraphics`IGAccelSurface::submitCopyForward(IOAccelEvent*, unsigned int, IOAccelResource2*, IOAccelResource2*, IOAccelBounds const*, unsigned int) + 39
+    frame #1: 0xffffff7f90d46322 IOAcceleratorFamily2`IOAccelSurface2::copy_forward(unsigned int, IOAccelDeviceRegion*, unsigned long long) + 242
+    frame #2: 0xffffff7f90d46feb IOAcceleratorFamily2`IOAccelSurface2::s_set_shape(IOAccelSurface2*, void*, IOExternalMethodArguments*) + 137
+    frame #3: 0xffffff800eeb9c17 kernel.development`::is_io_connect_method(connection=0xffffff802402e000, selector=9, scalar_input=<unavailable>, scalar_inputCnt=<unavailable>, inband_input=<unavailable>, inband_inputCnt=20, ool_input=<unavailable>, ool_input_size=<unavailable>, inband_output=<unavailable>, inband_outputCnt=<unavailable>, scalar_output=<unavailable>, scalar_outputCnt=<unavailable>, ool_output=<unavailable>, ool_output_size=<unavailable>) + 487 at IOUserClient.cpp:3720 [opt]
+    frame #4: 0xffffff800e95cfc0 kernel.development`_Xio_connect_method(InHeadP=<unavailable>, OutHeadP=0xffffff802e1f45d0) + 384 at device_server.c:8255 [opt]
+    frame #5: 0xffffff800e888ee3 kernel.development`ipc_kobject_server(request=0xffffff802ceae800) + 259 at ipc_kobject.c:340 [opt]
+    frame #6: 0xffffff800e864e13 kernel.development`ipc_kmsg_send(kmsg=<unavailable>, option=<unavailable>, send_timeout=0) + 195 at ipc_kmsg.c:1441 [opt]
+    frame #7: 0xffffff800e87b435 kernel.development`mach_msg_overwrite_trap(args=<unavailable>) + 197 at mach_msg.c:470 [opt]
+    frame #8: 0xffffff800e983850 kernel.development`mach_call_munger64(state=0xffffff802c66e060) + 480 at bsd_i386.c:560 [opt]
+    frame #9: 0xffffff800e9b9516 kernel.development`hndl_mach_scall64 + 22

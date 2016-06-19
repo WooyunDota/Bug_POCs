@@ -1,0 +1,21 @@
+project frameworks/av/
+diff --git a/drm/common/IDrmManagerService.cpp b/drm/common/IDrmManagerService.cpp
+index db41e0b..4c33fcc 100644
+--- a/drm/common/IDrmManagerService.cpp
++++ b/drm/common/IDrmManagerService.cpp
+@@ -1437,10 +1437,11 @@ status_t BnDrmManagerService::onTransact(
+             = decrypt(uniqueId, &handle, decryptUnitId, encBuffer, &decBuffer, IV);
+ 
+         reply->writeInt32(status);
+-
+-        const int size = decBuffer->length;
+-        reply->writeInt32(size);
+-        reply->write(decBuffer->data, size);
++        if (status == NO_ERROR) {
++            const int size = decBuffer->length;
++            reply->writeInt32(size);
++            reply->write(decBuffer->data, size);
++        }
+ 
+         clearDecryptHandle(&handle);
+         delete encBuffer; encBuffer = NULL;
